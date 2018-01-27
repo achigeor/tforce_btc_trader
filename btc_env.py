@@ -122,13 +122,9 @@ class BitcoinEnv(Environment):
         self.mode = Mode.TRAIN
         self.conn = data.engine.connect()
 
-        # TODO this might need to be placed somewhere that updates relatively often
         # gdax min order size = .01btc; krakken = .002btc
         self.min_trade = {Exchange.GDAX: .01, Exchange.KRAKEN: .002}[EXCHANGE]
-        try:
-            self.btc_price = int(requests.get(f"https://api.cryptowat.ch/markets/{EXCHANGE.value}/btcusd/price").json()['result']['price'])
-        except:
-            self.btc_price = 12000
+        self.update_btc_price()
 
         # Action space
         trade_cap = self.min_trade * 2  # not necessary to limit it like this, doing for my own sanity in live-mode
@@ -177,6 +173,13 @@ class BitcoinEnv(Environment):
         random.seed(seed)
         np.random.seed(seed)
         tf.set_random_seed(seed)
+
+    def update_btc_price(self):
+        try:
+            self.btc_price = int(requests.get(f"https://api.cryptowat.ch/markets/{EXCHANGE.value}/btcusd/price").json()['result']['price'])
+        except:
+            self.btc_price = self.btc_price or 12000
+
 
     def _diff(self, arr, percent=False):
         series = pd.Series(arr)
@@ -378,6 +381,9 @@ class BitcoinEnv(Environment):
                     print(res)
             elif ep_acc.total_steps % 10 == 0:
                 print(".")
+
+            if signal != 0 and live:
+                self.update_btc_price()
 
             new_data = None
             while new_data is None:

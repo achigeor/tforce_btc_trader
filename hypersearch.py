@@ -364,7 +364,7 @@ hypers['custom'] = {
     # Instead of using absolute price diffs, use percent-change.
     'pct_change': {
         'type': 'bool',
-        'guess': False
+        'guess': True
     },
     # True = one action (-$x to +$x). False = two actions: (buy|sell|hold) and (how much?)
     'single_action': {
