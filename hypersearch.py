@@ -194,10 +194,10 @@ def hydrate_baseline(x, flat):
             'baseline_mode': 'states',
             'baseline_optimizer': {
                 'type': 'multi_step',
-                'num_steps': flat['optimization_steps'],
+                'num_steps': 5,
                 'optimizer': {
                     'type': flat['step_optimizer.type'],
-                    'learning_rate': 10 ** -flat['step_optimizer.learning_rate']
+                    'learning_rate': 1e-3
                 }
             },
         }
@@ -217,13 +217,13 @@ hypers['model'] = {
     'optimizer.learning_rate': {
         'type': 'bounded',
         'vals': [0., 9.],
-        'guess': 7.9,
+        'guess': 3.,
         'hydrate': ten_to_the_neg
     },
     'optimization_steps': {
         'type': 'bounded',
         'vals': [1, 30],  # want to try higher, but too slow to test
-        'guess': 29,
+        'guess': 50,
         'pre': round
     },
     'discount': {
@@ -237,7 +237,7 @@ hypers['distribution_model'] = {
     'entropy_regularization': {
         'type': 'bounded',
         'vals': [0, 5],
-        'guess': 2.46,
+        'guess': 2.,
         'hydrate': min_ten_neg(1e-4, 0.)
     }
 }
@@ -260,7 +260,7 @@ hypers['pg_prob_ration_model'] = {
     'likelihood_ratio_clipping': {
         'type': 'bounded',
         'vals': [0., 1.],
-        'guess': .1,
+        'guess': .2,
         'hydrate': min_threshold(.05, None)
     }
 }
