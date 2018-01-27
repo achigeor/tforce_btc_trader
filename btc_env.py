@@ -93,7 +93,7 @@ scalers = {}
 # We don't want random-seeding for reproducibilityy! We _want_ two runs to give different results, because we only
 # trust the hyper combo which consistently gives positive results!
 ALLOW_SEED = False
-TIMESTEPS = int(3e5)  # int(2e6)
+TIMESTEPS = int(2e6)
 
 
 class BitcoinEnv(Environment):
@@ -437,6 +437,7 @@ class BitcoinEnv(Environment):
         if print_results: self.episode_finished(None)
 
     def train_and_test(self, agent, early_stop=-1, n_tests=15):
+        n_tests = 40
         n_train = TIMESTEPS // n_tests
         i = 0
         runner = Runner(agent=agent, environment=self)

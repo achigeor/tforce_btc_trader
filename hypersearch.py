@@ -207,19 +207,6 @@ def hydrate_baseline(x, flat):
 # Many of these hypers come directly from tensorforce/tensorforce/agents/ppo_agent.py, see that for documentation
 hypers = {}
 hypers['agent'] = {}
-hypers['batch_agent'] = {
-    'batch_size': {
-        'type': 'bounded',
-        'vals': [3, 11],
-        'guess': 5,
-        'pre': round,
-        'hydrate': two_to_the
-    },
-    'keep_last_timestep': {
-        'type': 'bool',
-        'guess': False
-    }
-}
 hypers['model'] = {
     # Doesn't seem to matter; consider removing
     'optimizer.type': {
@@ -280,7 +267,6 @@ hypers['pg_prob_ration_model'] = {
 
 hypers['ppo_agent'] = {  # vpg_agent, trpo_agent
     **hypers['agent'],
-    **hypers['batch_agent'],
     **hypers['model'],
     **hypers['distribution_model'],
     **hypers['pg_model'],
@@ -344,7 +330,7 @@ hypers['custom'] = {
     'net.dropout': {
         'type': 'bounded',
         'vals': [0., .2],
-        'guess': .28,
+        'guess': .001,
         'hydrate': min_threshold(.1, None)
     },
     'net.l2': {
@@ -544,13 +530,6 @@ class HSearchEnv(object):
                 main.update(hydrate_baseline(self.hypers['baseline_mode'], flat))
 
             main['baseline']['network_spec'] = custom_net(custom, baseline=True)
-
-        # GPU split
-        session_config = None
-        if self.gpu_split != 1:
-            fraction = .9 / self.gpu_split if self.gpu_split > 1 else self.gpu_split
-            session_config = tf.ConfigProto(gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=fraction))
-        main['session_config'] = session_config
 
         print('--- Flat ---')
         pprint(flat)

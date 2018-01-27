@@ -37,10 +37,58 @@ def main():
     hs = HSearchEnv(gpu_split=args.gpu_split, net_type=args.net_type)
     flat, hydrated, network = hs.get_winner(id=args.id)
     env = BitcoinEnv(flat, name='ppo_agent')
+
+    hydrated.update(
+        # Agent
+        states_preprocessing=None,
+        actions_exploration=None,
+        reward_preprocessing=None,
+        # MemoryModel
+        update_mode=dict(
+            unit='episodes',
+            # 10 episodes per update
+            batch_size=20,
+            # Every 10 episodes
+            frequency=20
+        ),
+        memory=dict(
+            type='latest',
+            include_next_states=False,
+            capacity=5000
+        ),
+        # DistributionModel
+        distributions=None,
+        # entropy_regularization=0.01,
+        # PGModel
+        # baseline_mode='states',
+        # baseline=dict(
+        #     type='mlp',
+        #     sizes=[32, 32]
+        # ),
+        # baseline_optimizer=dict(
+        #     type='multi_step',
+        #     optimizer=dict(
+        #         type='adam',
+        #         learning_rate=1e-3
+        #     ),
+        #     num_steps=5
+        # ),
+        # gae_lambda=0.97,
+        # PGLRModel
+        # likelihood_ratio_clipping=0.2,
+        # PPOAgent
+        # step_optimizer=dict(
+        #     type='adam',
+        #     learning_rate=1e-3
+        # ),
+        subsampling_fraction=0.1,
+        # optimization_steps=50
+    )
+
     agent = agents_dict['ppo_agent'](
-        states_spec=env.states,
-        actions_spec=env.actions,
-        network_spec=network,
+        states=env.states,
+        actions=env.actions,
+        network=network,
         **hydrated
     )
 
