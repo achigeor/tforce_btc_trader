@@ -42,6 +42,7 @@ guess_overrides = [
         {'step_window': 400},
         {'batch_size': 10},
         {'net.depth_post': 2},
+        {'percent_diff': False}
     ],
     [
         {'repeat_last_state': True},
