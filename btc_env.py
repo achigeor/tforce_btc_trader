@@ -74,16 +74,17 @@ class Scaler(object):
         # Skip every few fittings. Each individual doesn't contribute a whole lot anyway, and costs a lot
         return self.done or (self.i % self.SKIP != 0 and self.i > self.SKIP)
 
-    def transform(self, input, kind, matrix=False):
+    def transform(self, input, kind):
         # this is awkward; we only want to increment once per step, but we're calling this fn 3x per step (once
         # for series, once for stationary, once for reward). Explicitly saying "only increment for one of those" here.
         # Using STATIONARY since SERIES might be called once per timestep in a conv window. TODO Seriously awkward
         if kind == self.STATIONARY: self.i += 1
 
         scaler, data = self.scalers[kind], self.data[kind]
+        matrix = np.array(input).ndim == 2
         if self._should_skip():
             if matrix: return scaler.transform(input)
-            else: return scaler.transform([input])[-1]
+            return scaler.transform([input])[-1]
         # Fit, transform, return
         if matrix:
             self.data[kind] += input.tolist()
@@ -91,11 +92,9 @@ class Scaler(object):
         else:
             data.append(input)
             ret = scaler.fit_transform(data)[-1]
-            if kind == self.REWARD: ret = ret[0]
         if self.i >= self.STOP_AT and not self.done:
             self.done = True
-            # Clear up memory, fitted scalers have all the info we need. stop=True only needed in one of these functions
-            del self.data
+            del self.data # Clear up memory, fitted scalers have all the info we need.
         return ret
 
     def avg_reward(self):
@@ -243,8 +242,9 @@ class BitcoinEnv(Environment):
         states = np.nan_to_num(np.column_stack(columns))
         prices = df[data.target].values
 
+        # Pre-scale all price actions up-front, since they don't change. We'll scale changing values real-time elsewhere
         if self.hypers.scale:
-            states = self.scaler.transform(states, Scaler.SERIES, matrix=True)
+            states = self.scaler.transform(states, Scaler.SERIES)
 
         return states, prices
 
@@ -278,29 +278,21 @@ class BitcoinEnv(Environment):
         # print(f"Loading {mode.name} took {after_time}s")
 
     def _get_next_state(self, i, cash, value, repeats):
-        next_series = self.observations[i]
-        next_stationary = [cash, value, repeats]
+        series = self.observations[i]
+        stationary = [cash, value, repeats]
         if self.hypers.scale:
-            ## This is already scaled in self._xform_data()
-            # next_series = self.scaler.transform(next_series, Scaler.SERIES)
-            next_stationary = self.scaler.transform(next_stationary, Scaler.STATIONARY).tolist()
+            # series already scaled in self._xform_data()
+            stationary = self.scaler.transform(stationary, Scaler.STATIONARY).tolist()
 
         if self.conv2d:
             if self.hypers.repeat_last_state:
-                next_stationary += next_series.tolist()
-
+                stationary += series.tolist()
             # Take note of the +1 here. LSTM uses a single index [i], which grabs the list's end. Conv uses a window,
             # [-something:i], which _excludes_ the list's end (due to Python indexing). Without this +1, conv would
             # have a 1-step-behind delayed response.
             window = self.observations[i - self.hypers.step_window + 1:i + 1]
-
-            ## This is already scaled in self._xform_data()
-            # if self.hypers.scale:
-            #     window = self.scaler.transform(window, self.scaler.SERIES, matrix=True)
-            # window = np.concatenate([window, [next_series]], axis=0)
-
-            next_series = np.expand_dims(window, axis=1)
-        return dict(series=next_series, stationary=next_stationary)
+            series = np.expand_dims(window, axis=1)
+        return dict(series=series, stationary=stationary)
 
     def reset(self):
         self.time = time.time()
@@ -375,7 +367,7 @@ class BitcoinEnv(Environment):
 
         next_state = self._get_next_state(step_acc.i, step_acc.cash, step_acc.value, step_acc.repeats)
         if self.hypers.scale:
-            reward = self.scaler.transform([reward], Scaler.REWARD)
+            reward = self.scaler.transform([reward], Scaler.REWARD)[0]
 
         terminal = int(step_acc.i + 1 >= len(self.observations))
         # Kill and punish if (a) agent ran out of money; (b) is doing nothing for way too long
